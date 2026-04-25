@@ -1,29 +1,24 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import Modal from "@/components/Modal/Modal";
+import type { Note } from "@/types/note";
 import css from "./NoteDetails.module.css";
-import { fetchNoteById } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
 
-export default function NoteDetailsClient() {
-  const { id } = useParams<{ id: string }>();
+interface NotePreviewClientProps {
+  note: Note | null;
+}
 
-  const {
-    data: note,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["note", id],
-    queryFn: () => fetchNoteById(id),
-    refetchOnMount: false,
-  });
+export default function NotePreviewClient({ note }: NotePreviewClientProps) {
+  const router = useRouter();
+
+  const handleClose = () => {
+    router.back();
+  };
+
   return (
-    <>
-      {isLoading ? (
-        <p>Loading, please wait...</p>
-      ) : isError || !note ? (
-        <p>Something went wrong.</p>
-      ) : (
+    <Modal isOpen={true} onClose={handleClose}>
+      {note ? (
         <div className={css.container}>
           <div className={css.item}>
             <div className={css.header}>
@@ -31,10 +26,14 @@ export default function NoteDetailsClient() {
             </div>
             <p className={css.tag}>{note.tag}</p>
             <p className={css.content}>{note.content}</p>
-            <p className={css.date}>{note.createdAt}</p>
+            <p className={css.date}>
+              {new Date(note.createdAt).toLocaleDateString()}
+            </p>
           </div>
         </div>
+      ) : (
+        <p>Note not found</p>
       )}
-    </>
+    </Modal>
   );
 }

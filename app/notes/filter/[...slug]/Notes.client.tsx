@@ -1,72 +1,115 @@
-// app/notes/filter/[...slug]/Notes.client.tsx
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { fetchNotes } from "@/lib/api";
-import Link from "next/link";
-import type { Note } from "@/types/note";
-import css from "./NoteList.module.css";
-import { useEffect, useState } from "react";
+import SearchBox from "@/components/SearchBox/SearchBox";
+import NoteList from "@/components/NoteList/NoteList";
+import Pagination from "@/components/Pagination/Pagination";
+import Modal from "@/components/Modal/Modal";
+import NoteForm from "@/components/NoteForm/NoteForm";
+import css from "./NotesPage.module.css";
 
 interface NotesClientProps {
   initialTag?: string;
 }
 
 export default function NotesClient({ initialTag }: NotesClientProps) {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
+  const currentTag = initialTag || "all";
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    async function loadNotes() {
-      const queryParams =
-        initialTag && initialTag !== "all" ? { tag: initialTag } : {};
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1);
+    }, 300);
 
-      try {
-        const { notes: fetchedNotes } = await fetchNotes(queryParams);
-        setNotes(fetchedNotes);
-      } catch (error) {
-        console.error("Failed to load notes:", error);
-      } finally {
-        setLoading(false);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["notes", currentTag, debouncedSearch, currentPage],
+    queryFn: async () => {
+      const queryParams: {
+        tag?: string;
+        search?: string;
+        page?: number;
+        perPage?: number;
+      } = {
+        page: currentPage,
+        perPage: 9,
+      };
+
+      if (currentTag && currentTag !== "all") {
+        queryParams.tag = currentTag;
       }
-    }
-    loadNotes();
-  }, [initialTag]);
 
-  if (loading) {
-    return <p>Loading...</p>;
+      if (debouncedSearch) {
+        queryParams.search = debouncedSearch;
+      }
+
+      return fetchNotes(queryParams);
+    },
+  });
+
+  const notes = data?.notes || [];
+  const totalPages = data?.totalPages || 1;
+
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+  };
+
+  const handlePageChange = (selectedItem: { selected: number }) => {
+    setCurrentPage(selectedItem.selected + 1);
+  };
+
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  if (error) {
+    return <p>Error loading notes. Please try again.</p>;
   }
 
   return (
-    <div>
-      <h1 className={css.title}>
-        {initialTag && initialTag !== "all"
-          ? `${initialTag} Notes`
-          : "All Notes"}
-      </h1>
+    <div className={css.app}>
+      <div className={css.toolbar}>
+        <h1 style={{ margin: 0 }}>
+          {currentTag !== "all" ? `${currentTag} Notes` : "All Notes"}
+        </h1>
+        <button onClick={handleOpenModal} className={css.button}>
+          Create Note +
+        </button>
+      </div>
 
-      {notes.length === 0 ? (
-        <p style={{ textAlign: "center", color: "#6c757d", padding: "40px 0" }}>
-          No notes found for this filter.
-        </p>
+      <SearchBox value={searchQuery} onSearch={handleSearch} />
+
+      {isLoading ? (
+        <p>Loading...</p>
       ) : (
-        <ul className={css.list}>
-          {notes.map((note: Note) => (
-            <li key={note.id} className={css.listItem}>
-              <Link
-                href={`/notes/${note.id}`}
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <h3 className={css.title}>{note.title}</h3>
-                <p className={css.content}>{note.content}</p>
+        <>
+          <NoteList notes={notes} />
 
-                <div className={css.footer}>
-                  <span className={css.tag}>{note.tag}</span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              pageCount={totalPages}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
       )}
+
+      <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
+        <NoteForm onCancel={handleCloseModal} />
+      </Modal>
     </div>
   );
 }
