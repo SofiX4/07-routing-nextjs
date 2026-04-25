@@ -1,6 +1,6 @@
 import { fetchNotes } from "@/lib/api";
 import type { Note } from "@/types/note";
-import css from "@/styles/NoteList.module.css";
+import css from "./NoteList.module.css";
 
 interface FilterPageProps {
   params: Promise<{
