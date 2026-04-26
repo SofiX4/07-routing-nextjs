@@ -97,7 +97,6 @@ export default function NotesClient({ initialTag }: NotesClientProps) {
         <p>No notes found.</p>
       ) : (
         <>
-          <NoteList notes={notes} /> {/* ← РЕНДЕРИТЬСЯ ТІЛЬКИ ЯКЩО Є НОТАТКИ */}
           {totalPages > 1 && (
             <Pagination
               currentPage={currentPage}
@@ -105,10 +104,10 @@ export default function NotesClient({ initialTag }: NotesClientProps) {
               onPageChange={handlePageChange}
             />
           )}
+          <NoteList notes={notes} />
         </>
       )}
 
-      {/* ← РЕНДЕРИТЬСЯ ТІЛЬКИ ЯКЩО МОДАЛКА ВІДКРИТА */}
       {isModalOpen && (
         <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
           <NoteForm onCancel={handleCloseModal} />
